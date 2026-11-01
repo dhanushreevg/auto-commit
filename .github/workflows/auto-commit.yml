@@ -2,28 +2,57 @@ name: Auto Commit
 
 on:
   schedule:
-    # Runs 2 times a day (UTC): 03:00, 15:00
-    - cron: "0 3,15 * * *"
-  workflow_dispatch: # lets you run it manually from the Actions tab
+    # Ten evenly spaced runs every 2 hours and 24 minutes (UTC).
+    - cron: "0 0 * * *"
+    - cron: "24 2 * * *"
+    - cron: "48 4 * * *"
+    - cron: "12 7 * * *"
+    - cron: "36 9 * * *"
+    - cron: "0 12 * * *"
+    - cron: "24 14 * * *"
+    - cron: "48 16 * * *"
+    - cron: "12 19 * * *"
+    - cron: "36 21 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: auto-commit-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   commit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Update activity log
+      - name: Record UTC execution time
         run: |
-          echo "Auto commit: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> activity.log
+          set -Eeuo pipefail
+          trap 'echo "::error::Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 
-      - name: Commit and push
+          timestamp="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Recording execution at ${timestamp}"
+          printf 'Auto commit: %s\n' "${timestamp}" >> activity.log
+
+      - name: Commit and push activity log
         run: |
-          git config user.name  "sanjay-offl"
+          set -Eeuo pipefail
+          trap 'echo "::error::Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+
+          git config user.name "sanjay-offl"
           git config user.email "sanjayoffl24@gmail.com"
           git add activity.log
-          git commit -m "chore: auto update $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "::error::No staged changes detected; refusing to create an empty commit."
+            exit 1
+          fi
+
+          timestamp="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          git commit -m "chore: auto update ${timestamp}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "Successfully pushed commit $(git rev-parse --short HEAD)."
