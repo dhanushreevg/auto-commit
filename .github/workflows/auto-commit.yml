@@ -43,8 +43,8 @@ jobs:
           set -Eeuo pipefail
           trap 'echo "::error::Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 
-          git config user.name "sanjay-offl"
-          git config user.email "sanjayoffl24@gmail.com"
+          git config user.name "dhanushreevg"
+          git config user.email "dhanushreedhachu@gmail.com"
           git add activity.log
 
           if git diff --cached --quiet; then
